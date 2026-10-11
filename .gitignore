@@ -50,7 +50,3 @@ temp/
 # Deployment
 .netlify/
 .vercel/
-
-# Editor-specific settings
-.vscode/
-.idea/
