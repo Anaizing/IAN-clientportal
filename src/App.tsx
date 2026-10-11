@@ -13,6 +13,7 @@ import { ThemeToggle } from './components/ThemeToggle'
 
 const navItems: { page: PortalPage; label: string; icon: typeof House }[] = [
   { page: 'home', label: 'Overview', icon: House },
+  { page: 'welcome', label: 'Welcome letter', icon: BookOpen },
   { page: 'onboarding', label: 'Onboarding', icon: ClipboardCheck },
   { page: 'intake', label: 'Website intake', icon: PenLine },
   { page: 'files', label: 'Files & assets', icon: FolderOpen },
@@ -35,6 +36,7 @@ export function App() {
   const [adminClientId, setAdminClientId] = useState(() => location.hash.split('/').pop() || '')
   const [snapshot, setSnapshot] = useState<PortalSnapshot | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
 
   useEffect(() => { portalService.getSnapshot().then(setSnapshot) }, [])
   useEffect(() => { if (page === 'admin-client') return; history.replaceState(null, '', page === 'admin-clients' ? '#/admin/clients' : `#/${page}`) }, [page])
@@ -44,7 +46,7 @@ export function App() {
 
   const navigate = (next: PortalPage) => { setPage(next); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   if (page === 'admin-clients' || page === 'admin-client') return <AdminPortal detailId={page === 'admin-client' ? adminClientId : undefined} onRoute={navigate} />
-  if (page === 'intake') return <div className="intake-landing"><div className="intake-corner-logo">[IAN]</div><ThemeToggle /><main className="intake-landing-main"><IntakeFlow snapshot={snapshot} onChange={setSnapshot} onComplete={() => navigate('home')} /></main></div>
+  if (page === 'intake') return <div className="intake-landing"><div className="intake-corner-logo">[IAN]</div><ThemeToggle /><main className="intake-landing-main"><IntakeFlow snapshot={snapshot} onChange={setSnapshot} onComplete={() => setShowWelcomeModal(true)} /></main>{showWelcomeModal && <WelcomeLetterModal snapshot={snapshot} onContinue={() => { setShowWelcomeModal(false); navigate('home') }} />}</div>
 
   return <div className="app-shell">
     <Sidebar page={page} navigate={navigate} />
@@ -53,6 +55,7 @@ export function App() {
       {menuOpen && <MobileMenu page={page} navigate={navigate} onClose={() => setMenuOpen(false)} />}
       <main className="page-content">
         {page === 'home' && <Home snapshot={snapshot} navigate={navigate} />}
+        {page === 'welcome' && <WelcomeLetter snapshot={snapshot} navigate={navigate} />}
         {page === 'onboarding' && <Onboarding snapshot={snapshot} navigate={navigate} />}
         {page === 'files' && <Files snapshot={snapshot} />}
         {page === 'brand' && <Brand />}
@@ -91,9 +94,45 @@ function Home({ snapshot, navigate }: { snapshot: PortalSnapshot; navigate: (pag
   </>
 }
 
+function intakeAnswer(snapshot: PortalSnapshot, patterns: RegExp[]) {
+  return snapshot.intake.find((item) => patterns.some((pattern) => pattern.test(item.label)))?.value.trim() || ''
+}
+
+function welcomeLetterData(snapshot: PortalSnapshot) {
+  const firstName = snapshot.client.name.split(' ')[0] || snapshot.client.name
+  const brandName = intakeAnswer(snapshot, [/brand name/i]) || snapshot.client.company
+  const brandQualities = intakeAnswer(snapshot, [/qualities.*brand/i, /three words/i, /brand feel/i])
+  const customerFeeling = intakeAnswer(snapshot, [/feel.*wear/i, /customer.*feel/i])
+  const heroProduct = intakeAnswer(snapshot, [/hero.*website/i, /hero.*collection/i, /most want people to buy/i])
+  const success = intakeAnswer(snapshot, [/website.*success/i, /make this website a success/i])
+  const visualDirection = intakeAnswer(snapshot, [/visual direction/i, /website feel most like/i, /how bold/i])
+  const projectLabel = snapshot.client.project || `${snapshot.client.company} website project`
+  const priorities = [heroProduct ? `Give ${heroProduct} the right presence so customers understand why it matters.` : `Make the offer easy to understand and easy to act on.`, brandQualities ? `Carry the feeling of ${brandQualities} through the brand, interface and content.` : `Build a brand direction that feels confident, distinct and useful.`, success ? `Measure decisions against this goal: ${success}` : `Make practical technical decisions that support performance, clarity and trust.`]
+  const introDetails = [brandQualities && `the brand qualities you named: ${brandQualities}`, customerFeeling && `the way you want people to feel: ${customerFeeling}`, heroProduct && `the product or collection you want to lead with: ${heroProduct}`].filter(Boolean).join(', ')
+  const directionDetails = [success && `what success looks like: ${success}`, visualDirection && `the visual direction you are drawn to: ${visualDirection}`].filter(Boolean).join(', ')
+  const paragraphs = [`Hi ${firstName}, welcome aboard. Thank you for taking the time to share the shape of ${brandName}${introDetails ? `, including ${introDetails}` : ''}. That gives us a much more human starting point than a generic brief: we can already see what needs to feel special, what needs to be clear, and where the website needs to build confidence for the people discovering the brand.`, `From here, our job is to turn that into a professional, well-communicated ${projectLabel} that supports the business rather than just decorating it${directionDetails ? `, guided by ${directionDetails}` : ''}. We’ll make careful calls on structure, brand expression, ecommerce flow, performance and any AI/networking features, and we’ll keep you close to the decisions that matter while handling the technical detail for you. You’re in good hands.`]
+  return { firstName, brandName, projectLabel, priorities, paragraphs }
+}
+
+function WelcomeLetterContent({ snapshot }: { snapshot: PortalSnapshot }) {
+  const letter = welcomeLetterData(snapshot)
+  return <><article className="welcome-letter-paper"><div className="letter-meta"><span>[IAN] STUDIO</span><span>{letter.brandName}</span></div>{letter.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="letter-signoff"><strong>Ian</strong><span>Studio founder · [IAN]</span></div></article><aside className="welcome-letter-side"><div><span className="small-label">PROJECT OVERVIEW</span><h2>{letter.brandName}</h2><p>{letter.projectLabel}</p></div><div className="welcome-priority-list">{letter.priorities.map((priority, index) => <div className="welcome-priority" key={priority}><span>{index + 1}</span><p>{priority}</p></div>)}</div><div className="welcome-trust-panel"><ShieldCheck size={20} /><div><strong>How we’ll protect the outcome</strong><p>Clear communication, thoughtful technical judgement, and decisions made around the client experience first.</p></div></div></aside></>
+}
+
+function WelcomeLetter({ snapshot, navigate }: { snapshot: PortalSnapshot; navigate: (page: PortalPage) => void }) {
+  const letter = welcomeLetterData(snapshot)
+  return <><section className="welcome-letter-hero"><div><span className="eyebrow">Welcome aboard</span><h1>{letter.firstName}, your project is in good hands.</h1><p>Your letter is shaped from the answers you shared in the intake, so it reflects the business, the project and the outcome we’re working toward together.</p></div><button className="coral-button" onClick={() => navigate('project')}>View project plan <ArrowRight size={16} /></button></section>
+    <section className="welcome-letter-page"><WelcomeLetterContent snapshot={snapshot} /></section></>
+}
+
+function WelcomeLetterModal({ snapshot, onContinue }: { snapshot: PortalSnapshot; onContinue: () => void }) {
+  const letter = welcomeLetterData(snapshot)
+  return <div className="welcome-letter-modal" role="dialog" aria-modal="true" aria-label="Welcome aboard letter"><article className="welcome-modal-letter"><div className="letter-meta"><span>[IAN] STUDIO</span><span>{letter.brandName}</span></div><span className="eyebrow">Intake complete</span><h1>{letter.firstName}, welcome aboard.</h1>{letter.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<div className="letter-signoff"><strong>Ian</strong><span>Studio founder · [IAN]</span></div><button className="coral-button" onClick={onContinue}>Continue to overview <ArrowRight size={16} /></button></article></div>
+}
+
 function Timeline({ phases }: { phases: Phase[] }) { return <div className="timeline">{phases.map((phase, index) => <div className={`timeline-item ${phase.state}`} key={phase.id}><div className="timeline-marker">{phase.state === 'complete' ? <Check size={12} /> : <span>{String(index + 1).padStart(2, '0')}</span>}</div><div><strong>{phase.label}</strong><span>{phase.detail}</span></div></div>)}</div> }
 
-function Onboarding({ snapshot, navigate }: { snapshot: PortalSnapshot; navigate: (page: PortalPage) => void }) { const items = [{ title: 'Welcome aboard', detail: 'Get familiar with how we’ll work together.', state: 'complete' as PhaseState, page: 'home' as PortalPage }, { title: 'Review & sign agreement', detail: 'Your agreement is safely signed and on file.', state: 'complete' as PhaseState, page: 'agreement' as PortalPage }, { title: 'Complete website intake', detail: 'Tell us about your business, audience and ambition.', state: 'waiting_on_client' as PhaseState, page: 'intake' as PortalPage }, { title: 'Upload brand assets', detail: 'Logos, photography, copy and anything else that helps.', state: 'waiting_on_client' as PhaseState, page: 'files' as PortalPage }, { title: 'Review colour palette', detail: 'A first point of view from Ian, ready for your eyes.', state: 'not_started' as PhaseState, page: 'brand' as PortalPage }, { title: 'Approve design direction', detail: 'The north star for every design decision that follows.', state: 'not_started' as PhaseState, page: 'project' as PortalPage }]; return <><PageIntro eyebrow="Your onboarding journey" title="One step at a time." description="Everything we need to make the project feel distinctly yours, in one simple checklist." /><div className="onboarding-layout"><div className="checklist-card">{items.map((item, index) => <div className="checklist-row" key={item.title}><div className={`check-circle ${item.state}`}>{item.state === 'complete' ? <Check size={15} /> : <span>{index + 1}</span>}</div><div className="check-content"><div className="check-title"><h3>{item.title}</h3><StatusBadge state={item.state} /></div><p>{item.detail}</p>{item.title === 'Complete website intake' && <div className="mini-progress"><span style={{ width: '65%' }} /></div>}</div><button className="row-arrow" onClick={() => navigate(item.page)}><ArrowRight size={17} /></button></div>)}</div><aside className="side-note"><div className="note-icon"><Sparkles size={18} /></div><h3>A note from Ian</h3><p>Don’t overthink your answers. The best starting point is usually the honest one — we’ll shape the words together later.</p><div className="note-sign">Ian <span>· Studio founder</span></div></aside></div></> }
+function Onboarding({ snapshot, navigate }: { snapshot: PortalSnapshot; navigate: (page: PortalPage) => void }) { const items = [{ title: 'Welcome aboard', detail: 'Get familiar with how we’ll work together.', state: 'complete' as PhaseState, page: 'welcome' as PortalPage }, { title: 'Review & sign agreement', detail: 'Your agreement is safely signed and on file.', state: 'complete' as PhaseState, page: 'agreement' as PortalPage }, { title: 'Complete website intake', detail: 'Tell us about your business, audience and ambition.', state: 'waiting_on_client' as PhaseState, page: 'intake' as PortalPage }, { title: 'Upload brand assets', detail: 'Logos, photography, copy and anything else that helps.', state: 'waiting_on_client' as PhaseState, page: 'files' as PortalPage }, { title: 'Review colour palette', detail: 'A first point of view from Ian, ready for your eyes.', state: 'not_started' as PhaseState, page: 'brand' as PortalPage }, { title: 'Approve design direction', detail: 'The north star for every design decision that follows.', state: 'not_started' as PhaseState, page: 'project' as PortalPage }]; return <><PageIntro eyebrow="Your onboarding journey" title="One step at a time." description="Everything we need to make the project feel distinctly yours, in one simple checklist." /><div className="onboarding-layout"><div className="checklist-card">{items.map((item, index) => <div className="checklist-row" key={item.title}><div className={`check-circle ${item.state}`}>{item.state === 'complete' ? <Check size={15} /> : <span>{index + 1}</span>}</div><div className="check-content"><div className="check-title"><h3>{item.title}</h3><StatusBadge state={item.state} /></div><p>{item.detail}</p>{item.title === 'Complete website intake' && <div className="mini-progress"><span style={{ width: '65%' }} /></div>}</div><button className="row-arrow" onClick={() => navigate(item.page)}><ArrowRight size={17} /></button></div>)}</div><aside className="side-note"><div className="note-icon"><Sparkles size={18} /></div><h3>A note from Ian</h3><p>Don’t overthink your answers. The best starting point is usually the honest one — we’ll shape the words together later.</p><div className="note-sign">Ian <span>· Studio founder</span></div></aside></div></> }
 
 function Files({ snapshot }: { snapshot: PortalSnapshot }) { return <><PageIntro eyebrow="Files & assets" title="Everything in one place." description="Upload the things that make your business yours. You can add more whenever inspiration strikes." action={<button className="coral-button"><Upload size={16} /> Upload files</button>} /><div className="upload-zone"><div className="upload-icon"><CloudUpload size={22} /></div><div><h3>Drop files here, or browse</h3><p>Images, PDFs, documents and brand files up to 50 MB.</p></div><button className="outline-button">Choose files</button></div><div className="asset-toolbar"><div className="filter-tabs"><button className="active">All files <span>3</span></button><button>Logo</button><button>Photography</button><button>Reference</button></div><button className="quiet-button"><Search size={15} /> Search</button></div><div className="asset-grid">{snapshot.files.map((file) => <div className="asset-card" key={file.name}><div className={`asset-preview ${file.color}`}><FileText size={28} strokeWidth={1.5} /><span>{file.type}</span></div><div className="asset-info"><div><strong>{file.name}</strong><span>{file.category} · {file.size}</span></div><MoreHorizontal size={18} /></div><div className="asset-meta"><span>Uploaded by you</span><span>{file.date}</span></div></div>)}</div></> }
 

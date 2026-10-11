@@ -1,4 +1,4 @@
-export type PortalPage = 'home' | 'onboarding' | 'intake' | 'files' | 'brand' | 'project' | 'agreement' | 'invoices' | 'handover' | 'admin-clients' | 'admin-client'
+export type PortalPage = 'home' | 'welcome' | 'onboarding' | 'intake' | 'files' | 'brand' | 'project' | 'agreement' | 'invoices' | 'handover' | 'admin-clients' | 'admin-client'
 export type PhaseState = 'complete' | 'in_progress' | 'waiting_on_client' | 'waiting_on_ian' | 'not_started'
 
 export type Phase = { id: string; label: string; state: PhaseState; detail: string }
