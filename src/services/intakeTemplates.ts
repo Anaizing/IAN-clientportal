@@ -11,7 +11,10 @@ function parseMarkdown(markdown: string): IntakeTemplate[] {
   return markdown.split(/^## /m).slice(1).map((section) => {
     const [name, ...body] = section.split('\n')
     const blocks = body.join('\n').split(/^### /m).slice(1)
-    return { id: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: name.trim(), sections: blocks.map((block) => ({ label: field(block, 'question'), helper: field(block, 'helper'), value: '', ...(field(block, 'type') === 'options' ? { options: field(block, 'options').split(',').map((item) => item.trim()).filter(Boolean) } : {}) })) }
+    return { id: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: name.trim(), sections: blocks.map((block) => {
+      const type = field(block, 'type') as 'text' | 'textarea' | 'options' | 'upload'
+      return { label: field(block, 'question'), helper: field(block, 'helper'), value: '', type: type || 'textarea', ...(type === 'options' ? { options: field(block, 'options').split(',').map((item) => item.trim()).filter(Boolean) } : {}) }
+    }) }
   })
 }
 

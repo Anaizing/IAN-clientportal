@@ -177,6 +177,11 @@
 - type: options
 - options: Logo, Brand colours, Fonts, Brand guidelines, Packaging, Photography, Illustrations, None yet
 
+### Upload brand assets
+- question: Upload any logos, product photos, campaign images, references, or brand files you already have.
+- helper: You can choose from your phone, camera roll, or files. Images, PDFs, documents, and ZIP files are all useful.
+- type: upload
+
 ### Colour direction
 - question: What colours should define the brand?
 - helper: Include existing colours, colours you love, and any colours you want us to avoid.

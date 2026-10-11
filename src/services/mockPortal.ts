@@ -2,8 +2,8 @@ export type PortalPage = 'home' | 'welcome' | 'onboarding' | 'intake' | 'files' 
 export type PhaseState = 'complete' | 'in_progress' | 'waiting_on_client' | 'waiting_on_ian' | 'not_started'
 
 export type Phase = { id: string; label: string; state: PhaseState; detail: string }
-export type FileAsset = { name: string; type: string; size: string; category: string; date: string; color: string }
-export type IntakeQuestion = { label: string; helper: string; value: string; options?: string[] }
+export type FileAsset = { name: string; type: string; size: string; category: string; date: string; color: string; url?: string }
+export type IntakeQuestion = { label: string; helper: string; value: string; type?: 'text' | 'textarea' | 'options' | 'upload'; options?: string[] }
 
 export type PortalSnapshot = {
   client: { id: string; name: string; initials: string; company: string; project: string; status: string }
@@ -48,12 +48,24 @@ const snapshot: PortalSnapshot = {
   ],
 }
 
+function readUploadedFiles(): FileAsset[] {
+  try { return JSON.parse(localStorage.getItem('ian-uploaded-files') || '[]') } catch { return [] }
+}
+
+export function rememberUploadedFiles(files: FileAsset[]) {
+  const persisted = files.map(({ url, ...file }) => file)
+  localStorage.setItem('ian-uploaded-files', JSON.stringify([...readUploadedFiles(), ...persisted]))
+}
+
 export const portalService = {
   getSnapshot: async (): Promise<PortalSnapshot> => {
     const template = getAssignedTemplate(snapshot.client.id)
     const intake = template?.sections.map((question, index) => ({ ...question, value: snapshot.intake[index]?.value ?? '' })) ?? snapshot.intake
-    return { ...snapshot, intake }
+    return { ...snapshot, intake, files: [...snapshot.files, ...readUploadedFiles()] }
   },
-  saveIntakeAnswer: async (index: number, value: string) => { snapshot.intake[index].value = value; return snapshot.intake[index] },
+  saveIntakeAnswer: async (index: number, value: string) => {
+    snapshot.intake[index] = snapshot.intake[index] ? { ...snapshot.intake[index], value } : { label: `Question ${index + 1}`, helper: '', value }
+    return snapshot.intake[index]
+  },
   approve: async (label: string) => ({ label, approvedBy: snapshot.client.name, approvedAt: 'Just now', version: 'v1.0' }),
 }
