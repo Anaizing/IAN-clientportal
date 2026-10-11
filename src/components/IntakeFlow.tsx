@@ -10,6 +10,9 @@ export function IntakeFlow({ snapshot, onChange, onComplete }: IntakeFlowProps) 
   const [saved, setSaved] = useState(false)
   const [completed, setCompleted] = useState(() => localStorage.getItem('ian-intake-complete') === 'true')
   const question = snapshot.intake[step]
+  const totalQuestions = snapshot.intake.length
+  const currentQuestion = Math.min(step + 1, totalQuestions)
+  const progress = totalQuestions ? Math.round((currentQuestion / totalQuestions) * 100) : 0
 
   const save = async (value: string) => {
     const next = { ...snapshot, intake: snapshot.intake.map((item, index) => index === step ? { ...item, value } : item) }
@@ -32,6 +35,12 @@ export function IntakeFlow({ snapshot, onChange, onComplete }: IntakeFlowProps) 
     onComplete()
   }
 
+  if (!question) return <section className="intake-complete" aria-label="Website intake unavailable">
+    <h1>No intake questions yet.</h1>
+    <p>Your intake template does not have any questions assigned right now.</p>
+    <button type="button" className="intake-continue" onClick={onComplete}>Go to overview <ArrowRight size={16} /></button>
+  </section>
+
   if (completed) return <section className="intake-complete" aria-label="Website intake complete">
     <div className="intake-complete-mark"><Check size={22} /></div>
     <h1>Intake complete.</h1>
@@ -40,6 +49,15 @@ export function IntakeFlow({ snapshot, onChange, onComplete }: IntakeFlowProps) 
   </section>
 
   return <section className="intake-simple" aria-label="Website intake questionnaire">
+    <div className="intake-simple-header">
+      <div>
+        <span className="intake-step-label">Question {currentQuestion} of {totalQuestions}</span>
+        <strong>{progress}% complete</strong>
+      </div>
+      <div className="intake-simple-track" role="progressbar" aria-label="Intake progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+        <span style={{ width: `${progress}%` }} />
+      </div>
+    </div>
     <div className="intake-simple-card">
       <h2>{question.label}</h2>
       {question.options ? <div className="intake-options">{question.options.map((option) => <button type="button" className={`intake-option ${question.value.split(',').map((item) => item.trim()).includes(option) ? 'selected' : ''}`} key={option} onClick={() => toggleOption(option)}>{question.value.split(',').map((item) => item.trim()).includes(option) && <Check size={15} />}{option}</button>)}</div> : <label className="intake-answer"><span className="sr-only">Your answer</span><textarea value={question.value} onChange={(event) => void save(event.target.value)} rows={5} placeholder={question.helper} /></label>}
