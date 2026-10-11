@@ -1,0 +1,16 @@
+{
+  "routes": [
+    { "path": "/", "title": "[IAN] Client Portal" },
+    { "path": "/#/home", "title": "Client portal overview" },
+    { "path": "/#/onboarding", "title": "Onboarding" },
+    { "path": "/#/intake", "title": "Website intake" },
+    { "path": "/#/files", "title": "Files and assets" },
+    { "path": "/#/brand", "title": "Brand direction" },
+    { "path": "/#/project", "title": "Project progress" },
+    { "path": "/#/agreement", "title": "Client agreement" },
+    { "path": "/#/invoices", "title": "Invoices" },
+    { "path": "/#/handover", "title": "Handover" },
+    { "path": "/#/admin/clients", "title": "Admin client directory" },
+    { "path": "/#/admin/clients/:clientId", "title": "Admin client detail" }
+  ]
+}
